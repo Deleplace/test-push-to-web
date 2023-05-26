@@ -10,17 +10,9 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-
-	"github.com/pusher/pusher-http-go/v5"
 )
 
-var pusherComSecret = os.Getenv("PUSHER_COM_SECRET")
-
 func main() {
-	if pusherComSecret == "" {
-		log.Fatal("Could not find env var PUSHER_COM_SECRET")
-	}
-
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(indexPage)
 	})
@@ -50,7 +42,7 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 	}
 
 	services := []serverPusher{
-		pusherPush,
+		pusherComPush,
 	}
 
 	log.Printf("Pushing %d events", n)
@@ -75,29 +67,6 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 
 type serverPusher func(eventID string) error
 
-func pusherPush(eventID string) error {
-	pusherClient := pusher.Client{
-		AppID:   "1608025",
-		Key:     "93f4a1f9e72133245d66",
-		Secret:  pusherComSecret,
-		Cluster: "eu",
-		Secure:  true,
-	}
-
-	const (
-		channelName = "server-push-test-channel"
-		eventName   = "new-data"
-	)
-	data := map[string]string{"id": eventID}
-	return pusherClient.Trigger(channelName, eventName, data)
-}
-
-func shuffle[T any](a []T) {
-	rand.Shuffle(len(a), func(i, j int) {
-		a[i], a[j] = a[j], a[i]
-	})
-}
-
 const alphanum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
 func randomString(n int) string {
@@ -106,4 +75,10 @@ func randomString(n int) string {
 		a[i] = alphanum[rand.Intn(len(alphanum))]
 	}
 	return string(a)
+}
+
+func shuffle[T any](a []T) {
+	rand.Shuffle(len(a), func(i, j int) {
+		a[i], a[j] = a[j], a[i]
+	})
 }
