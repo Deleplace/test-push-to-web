@@ -53,6 +53,9 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 		pusherPush,
 	}
 
+	log.Printf("Pushing %d events", n)
+
+	nerrs := 0
 	for i := 0; i < n; i++ {
 		// Vary the exact order of service calls
 		shuffle(services)
@@ -62,10 +65,12 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 		for _, push := range services {
 			err := push(eventID)
 			if err != nil {
+				nerrs++
 				log.Println(err)
 			}
 		}
 	}
+	log.Printf("Pushed %d events to %d services => %d errors", n, len(services), nerrs)
 }
 
 type serverPusher func(eventID string) error
@@ -79,9 +84,12 @@ func pusherPush(eventID string) error {
 		Secure:  true,
 	}
 
-	// The payload doesn't matter, only the event delivery
-	data := map[string]string{"foo": "bar"}
-	return pusherClient.Trigger("new-data", eventID, data)
+	const (
+		channelName = "server-push-test-channel"
+		eventName   = "new-data"
+	)
+	data := map[string]string{"id": eventID}
+	return pusherClient.Trigger(channelName, eventName, data)
 }
 
 func shuffle[T any](a []T) {
