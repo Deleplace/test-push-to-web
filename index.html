@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<head>
+  <title>Server Push Test</title>
+  <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+  <script>
+
+    let pusherComEvents = {};
+    let firestoreEvents = {};
+
+    var pusher = new Pusher('497269378f3faf6ec5e7', {
+      cluster: 'eu'
+    });
+
+    var channel = pusher.subscribe('server-push-test-channel');
+    channel.bind('new-data', function(data) {
+      let tp = Date.now();
+      let eventId = data.id;
+      console.log(`Received pusher.com event '${eventId}'`)
+      pusherComEvents[eventId] = tp;
+
+      report(eventId);
+    });
+
+
+    function report(eventId) {
+      let tp = pusherComEvents[eventId];
+      let tf = firestoreEvents[eventId];
+
+      // Report, only if the 2 events have been received
+      if( tp && tf ) {
+        let diff = (tp - tf);
+        // Positive: Firestore wins
+        // Negative: Pusher.com wins
+        console.log(`Event '${eventId}' => diff = ${diff}ms`);
+
+        var params = new URLSearchParams();
+        params.append("eventId", eventId);
+        params.append("d", diff);
+        fetch( "/report", {
+          method: "POST",
+          body: params
+        });
+      }
+    }
+
+    function trigger() {
+      let n = document.getElementById('n').value;
+
+      // Ask the server to push n pairs of events.
+      // Each event is sent via Pusher.com and via Firestore, roughly at the same time.
+      var params = new URLSearchParams();
+      params.append("n", n);
+      fetch( "/trigger", {
+        method: "POST",
+        body: params
+      });
+
+      return false;
+    }
+
+    window.onload = () => {
+      document.getElementById('trigger').addEventListener("click", trigger);
+    };
+  </script>
+</head>
+<body>
+  <h1>Pusher Test</h1>
+  <p>
+    Server Push Test
+  </p>
+
+  <div>
+    Trigger <input id="n" value="1" type="text" size="3"> events
+    <button id="trigger">Go</button>
+  </div>
+</body>
