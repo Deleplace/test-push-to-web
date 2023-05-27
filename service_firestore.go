@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 )
@@ -23,8 +24,7 @@ type MessageModel struct {
 }
 
 func firestorePush(ctx context.Context, eventID string) error {
-
-	client, err := firestore.NewClient(ctx, "projectID")
+	client, err := firestore.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return err
 	}
@@ -38,8 +38,12 @@ func firestorePush(ctx context.Context, eventID string) error {
 
 	_, err = chanDoc.Create(ctx, ChannelModel{})
 	if err != nil {
-		log.Println(err)
-		// it's okay if the doc already existed, carry on
+		if strings.Contains(err.Error(), "Document already exists") {
+			log.Println(err)
+			// it's okay if the doc already existed, carry on
+		} else {
+			return err
+		}
 	}
 
 	// the "id" of a message could be just a fine-grained timestamp

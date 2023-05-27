@@ -18,6 +18,7 @@ func main() {
 		w.Write(indexPage)
 	})
 	http.HandleFunc("/trigger", trigger)
+	http.HandleFunc("/report", report)
 
 	port := os.Getenv("PORT")
 	if port == "" {
