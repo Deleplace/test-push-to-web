@@ -3,6 +3,7 @@ package main
 // Sample code from Pusher.com
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"log"
@@ -33,6 +34,8 @@ func main() {
 var indexPage []byte
 
 func trigger(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	n, err := strconv.Atoi(r.FormValue("n"))
 	if err != nil {
 		log.Printf("Unexpected value for n: %q", r.FormValue("n"))
@@ -43,6 +46,7 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 
 	services := []serverPusher{
 		pusherComPush,
+		firestorePush,
 	}
 
 	log.Printf("Pushing %d events", n)
@@ -55,7 +59,7 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 		eventID := randomString(5)
 
 		for _, push := range services {
-			err := push(eventID)
+			err := push(ctx, eventID)
 			if err != nil {
 				nerrs++
 				log.Println(err)
@@ -65,7 +69,7 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Pushed %d events to %d services => %d errors", n, len(services), nerrs)
 }
 
-type serverPusher func(eventID string) error
+type serverPusher func(ctx context.Context, eventID string) error
 
 const alphanum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 

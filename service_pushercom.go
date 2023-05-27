@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -15,7 +16,7 @@ func init() {
 	}
 }
 
-func pusherComPush(eventID string) error {
+func pusherComPush(ctx context.Context, eventID string) error {
 	pusherClient := pusher.Client{
 		AppID:   "1608025",
 		Key:     "93f4a1f9e72133245d66",
