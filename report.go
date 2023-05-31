@@ -8,10 +8,10 @@ import (
 )
 
 func report(w http.ResponseWriter, r *http.Request) {
-	eventID := r.FormValue("eventID")
+	eventID := r.FormValue("eventId")
 	if eventID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Expected valid eventID")
+		fmt.Fprintln(w, "Expected valid eventId")
 		return
 	}
 
