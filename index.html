@@ -1,12 +1,66 @@
 <!DOCTYPE html>
 <head>
   <title>Server Push Test</title>
-  <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
-  <script>
 
+  <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <script>
+    //
+    // State
+    //
     let pusherComEvents = {};
     let firestoreEvents = {};
 
+    //
+    // Firestore/Firebase config
+    //
+    const firebaseConfig = {
+      apiKey: "AIzaSyDxm7NX7GNvVE-_O7TrmnMcBrVHEhOua8c",
+      authDomain: "test-push-to-web.firebaseapp.com",
+      projectId: "test-push-to-web",
+      storageBucket: "test-push-to-web.appspot.com",
+      messagingSenderId: "417914038614",
+      appId: "1:417914038614:web:fa135b5802b77677b0cef7"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function firestoreListenToCollection() {
+      db.collection("channels")
+        .doc("server-push-test-channel")
+        .collection("messages")
+        .onSnapshot((querySnapshot) => {
+          let tf = Date.now();
+          querySnapshot.forEach((doc) => {
+            let eventId = doc.id;
+            if(!firestoreEvents[eventId]) {
+              console.log("Message id: ", eventId, ", data: ", doc.data());
+              firestoreEvents[eventId] = tf;
+              report(eventId);
+            }
+          });
+        });
+    }
+
+    function firestoreListenTo(eventId) {
+      db.collection("channels")
+        .doc("server-push-test-channel")
+        .collection("messages")
+        .doc(eventId)
+        .onSnapshot( (doc) => {
+            console.log(`Event ${eventId} data: ${doc.data()}`);
+        });
+    }
+
+    firestoreListenToCollection();
+
+
+    //
+    // Pusher.com config
+    //
     var pusher = new Pusher('93f4a1f9e72133245d66', {
       cluster: 'eu'
     });
