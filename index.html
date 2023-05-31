@@ -14,6 +14,11 @@
     let pusherComEvents = {};
     let firestoreEvents = {};
 
+    let campaign = {
+      n: null,
+      start: null
+    }
+
     //
     // Firestore/Firebase config
     //
@@ -89,12 +94,23 @@
           method: "POST",
           body: params
         });
+
+        if( Object.keys(pusherComEvents).length == campaign.n && Object.keys(firestoreEvents).length == campaign.n ) {
+          let duration = new Date().getTime() - campaign.start;
+          // That's when we're lucky, and all events were received without error
+          console.log(`Received all ${campaign.n} messages from Firestore and Pusher, in ${duration}ms`);
+        }
       }
     }
 
     function trigger() {
       let n = document.getElementById('n').value;
       let chan = document.getElementById('channel').value;
+
+      pusherComEvents = {};
+      firestoreEvents = {};
+      campaign.n = n;
+      campaign.start = new Date();
 
       // Start listening (before triggering)
       firestoreListenToCollection(chan);
