@@ -23,16 +23,11 @@ type MessageModel struct {
 	Message string
 }
 
-func firestorePush(ctx context.Context, eventID string) error {
+func firestorePush(ctx context.Context, channelName string, eventID string) error {
 	client, err := firestore.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return err
 	}
-
-	const (
-		channelName = "server-push-test-channel"
-		// eventName   = "new-data"
-	)
 
 	chanDoc := client.Doc("channels/" + channelName)
 

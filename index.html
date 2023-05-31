@@ -18,45 +18,37 @@
     // Firestore/Firebase config
     //
     const firebaseConfig = {
-      apiKey: "AIzaSyDxm7NX7GNvVE-_O7TrmnMcBrVHEhOua8c",
-      authDomain: "test-push-to-web.firebaseapp.com",
-      projectId: "test-push-to-web",
-      storageBucket: "test-push-to-web.appspot.com",
-      messagingSenderId: "417914038614",
-      appId: "1:417914038614:web:fa135b5802b77677b0cef7"
+      // YOUR FIREBASE CONFIG HERE
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function firestoreListenToCollection() {
+    function firestoreListenToCollection(channelName) {
       db.collection("channels")
-        .doc("server-push-test-channel")
+        .doc(channelName)
         .collection("messages")
         .onSnapshot((querySnapshot) => {
           let tf = Date.now();
           querySnapshot.forEach((doc) => {
             let eventId = doc.id;
             if(!firestoreEvents[eventId]) {
-              console.log("Message id: ", eventId, ", data: ", doc.data());
+              console.log("Firestore Message id: ", eventId, ", data: ", doc.data());
               firestoreEvents[eventId] = tf;
-              report(eventId);
+              report(channelName, eventId);
             }
           });
         });
     }
 
-    function firestoreListenTo(eventId) {
+    function firestoreListenTo(channelName, eventId) {
       db.collection("channels")
-        .doc("server-push-test-channel")
+        .doc(channelName)
         .collection("messages")
         .doc(eventId)
         .onSnapshot( (doc) => {
             console.log(`Event ${eventId} data: ${doc.data()}`);
         });
     }
-
-    firestoreListenToCollection();
-
 
     //
     // Pusher.com config
@@ -65,18 +57,20 @@
       cluster: 'eu'
     });
 
-    var channel = pusher.subscribe('server-push-test-channel');
-    channel.bind('new-data', function(data) {
-      let tp = Date.now();
-      let eventId = data.id;
-      console.log(`Received pusher.com event '${eventId}'`)
-      pusherComEvents[eventId] = tp;
+    function pusherComListenTo(channelName) {
+      let pusherComChannel = pusher.subscribe(channelName);
+      pusherComChannel.bind('new-data', function(data) {
+        let tp = Date.now();
+        let eventId = data.id;
+        console.log(`Received pusher.com event '${eventId}'`)
+        pusherComEvents[eventId] = tp;
 
-      report(eventId);
-    });
+        report(channelName, eventId);
+      });
+    }
 
 
-    function report(eventId) {
+    function report(channelName, eventId) {
       let tp = pusherComEvents[eventId];
       let tf = firestoreEvents[eventId];
 
@@ -85,9 +79,10 @@
         let diff = (tp - tf);
         // Positive: Firestore wins
         // Negative: Pusher.com wins
-        console.log(`Event '${eventId}' => diff = ${diff}ms`);
+        console.log(`Channel ${channelName}, Event '${eventId}' => diff = ${diff}ms`);
 
         var params = new URLSearchParams();
+        params.append("chan", channelName);
         params.append("eventId", eventId);
         params.append("d", diff);
         fetch( "/report", {
@@ -99,11 +94,17 @@
 
     function trigger() {
       let n = document.getElementById('n').value;
+      let chan = document.getElementById('channel').value;
+
+      // Start listening (before triggering)
+      firestoreListenToCollection(chan);
+      pusherComListenTo(chan);
 
       // Ask the server to push n pairs of events.
       // Each event is sent via Pusher.com and via Firestore, roughly at the same time.
       var params = new URLSearchParams();
       params.append("n", n);
+      params.append("chan", chan);
       fetch( "/trigger", {
         method: "POST",
         body: params
@@ -112,19 +113,36 @@
       return false;
     }
 
+    function randomString(n) {
+      const alphanum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let s = "";
+      for (let i = 0; i < n; i += 1) {
+          s += alphanum[~~(Math.random() * alphanum.length)];
+      }
+      return s;
+    };
+
     window.onload = () => {
+      document.getElementById('channel').value = randomString(6);
+
       document.getElementById('trigger').addEventListener("click", trigger);
     };
   </script>
 </head>
 <body>
-  <h1>Pusher Test</h1>
-  <p>
-    Server Push Test
-  </p>
+  <h1>Server Push Test</h1>
 
   <div>
+    Channel <input id="channel" size="6">
+    <br/>
+    <br/>
     Trigger <input id="n" value="1" type="text" size="3"> events
     <button id="trigger">Go</button>
+  </div>
+  <br/>
+  <br/>
+
+  <div>
+    Open the dev tools to view the event logs
   </div>
 </body>

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 )
 
 func main() {
@@ -37,6 +39,13 @@ var indexPage []byte
 func trigger(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	channelName := r.FormValue("chan")
+	if channelName == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Expected valid chan")
+		return
+	}
+
 	n, err := strconv.Atoi(r.FormValue("n"))
 	if err != nil {
 		log.Printf("Unexpected value for n: %q", r.FormValue("n"))
@@ -52,6 +61,7 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Pushing %d events", n)
 
+	t := time.Now()
 	nerrs := 0
 	for i := 0; i < n; i++ {
 		// Vary the exact order of service calls
@@ -59,18 +69,33 @@ func trigger(w http.ResponseWriter, r *http.Request) {
 
 		eventID := randomString(5)
 
-		for _, push := range services {
-			err := push(ctx, eventID)
+		errs := make([]error, len(services))
+		var wg sync.WaitGroup
+		wg.Add(len(services))
+		for i, push := range services {
+			i, push := i, push
+			go func() {
+				defer wg.Done()
+				err := push(ctx, channelName, eventID)
+				if err != nil {
+					errs[i] = err
+					log.Println(err)
+				}
+			}()
+		}
+		wg.Wait()
+		for _, err := range errs {
 			if err != nil {
 				nerrs++
-				log.Println(err)
 			}
 		}
 	}
-	log.Printf("Pushed %d events to %d services => %d errors", n, len(services), nerrs)
+	duration := time.Since(t)
+
+	log.Printf("Pushed %d events to %d services in %v => %d errors", n, len(services), duration, nerrs)
 }
 
-type serverPusher func(ctx context.Context, eventID string) error
+type serverPusher func(ctx context.Context, channelName string, eventID string) error
 
 const alphanum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 

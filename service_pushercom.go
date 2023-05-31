@@ -16,7 +16,7 @@ func init() {
 	}
 }
 
-func pusherComPush(ctx context.Context, eventID string) error {
+func pusherComPush(ctx context.Context, channelName string, eventID string) error {
 	pusherClient := pusher.Client{
 		AppID:   "1608025",
 		Key:     "93f4a1f9e72133245d66",
@@ -26,8 +26,7 @@ func pusherComPush(ctx context.Context, eventID string) error {
 	}
 
 	const (
-		channelName = "server-push-test-channel"
-		eventName   = "new-data"
+		eventName = "new-data"
 	)
 	data := map[string]string{"id": eventID}
 	return pusherClient.Trigger(channelName, eventName, data)
